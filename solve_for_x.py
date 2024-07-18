@@ -12,6 +12,8 @@ epsilon = 2.220446049250313e-16
 sqrtepsilon = 1.4901161193847656e-08 # Square root of Python epsilon
 
 builtins = {"abs", "c"}
+# Regex for implicit multiplication can't handle these functions, 
+# it thinks it's multiplication because of a number followed by a bracket.
 undesired = {"log10", "atan2"}
 math_names = math_names.union(builtins).union(cmath_names)#.difference(undesired)
 
@@ -32,7 +34,7 @@ def bracketCheck(expression):
 
 def replace_exponentiation(expression):
     # Regex pattern to match the base and exponent of ** operator
-    pattern = re.compile(r'(-?\([^()]+\)|-?\b\w+\b|\d+\.+\d+|\d+|-?\b\w+\((?:[^()]+)*\))\*\*(-?\b\w+\((?:[^()]+|(?1))*\)|-?\([^()]+\)|-?\d+\.+\d*|-?\b\w+\b)')
+    pattern = re.compile(r'(\w*\((?:[^()]++|(?1))*+\)|\b\w+\b|\d+\.\d+|d+)\*\*(-?\w*\((?:[^()]++|(?1))*+\)|-?\b\w+\b|\d+\.\d*|\d+)')
     
     while '**' in expression:
         expression = pattern.sub(r'pow(\1,\2)', expression)
