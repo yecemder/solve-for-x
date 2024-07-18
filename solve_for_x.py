@@ -72,18 +72,19 @@ def getInput():
 
 def checkInput(equation):
     onlyeval = False
-##    if "=" not in equation:
-##        print("Missing an equals sign.")
-##        return None
+    if "=" not in equation:
+        print("Missing an equals sign.")
+        return None
     
-##    if "x" not in equation:
-##        print("No x-variable to solve for.")
-##        return None
+    if "x" not in equation:
+        print("No x-variable to solve for.")
+        return None
         
     separate = equation.split("=")
     if len(separate) > 2:
         print("Only one equals sign allowed.")
         return None
+    
     elif len(separate) == 1:
         onlyeval = True
         
@@ -95,7 +96,7 @@ def checkInput(equation):
         if not bracketCheck(part):
             print("Incorrect brackets.")
             return None
-
+    print(separate)
     # Extract variable names
     names = set(
         node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
@@ -115,9 +116,9 @@ def checkInput(equation):
     print(names)
     names -= math_names
     print(names)
-##    if names != {"x"} or names != set():
-##        print("Incorrect variable usage.")
-##        return None
+    if (not onlyeval and names != {"x"}) or (onlyeval and names != set()):
+        print("Incorrect variable/function usage.")
+        return None
 
     return equation, onlyeval
 
@@ -210,15 +211,9 @@ def solve(equation, found=None):
         found = []
     guesses = makeInitialGuesses(equation)
     for i in guesses:
-        result = None
-        try:
-            result = halleysMethod(equation, i) # try halley's method
-        except:
-            pass
+        result = newtonsMethod(equation, i)
         if result == None:
-            result = newtonsMethod(equation, i)
-            if result == None:
-                continue
+            continue
         found.append(result)
         divided = applyDivision(equation, result)
         break
@@ -229,6 +224,7 @@ def solve(equation, found=None):
 
     # If we've found a lot of roots, don't bother with anymore.
     if len(found) >= 10:
+        print("enough roots found")
         return found
 
     # Divide function by a root and continue
