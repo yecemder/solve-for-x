@@ -4,6 +4,8 @@ import ast
 import math
 import cmath as c
 
+pow = __builtins__.pow
+
 # Get all names from math module
 math_names = {name for name in dir(math)}
 cmath_names = {name for name in dir(c)}
@@ -35,7 +37,7 @@ def bracketCheck(expression):
 def replace_exponentiation(expression):
     # Regex pattern to match the base and exponent of ** operator
     pattern = re.compile(r'(\w*\((?:[^()]++|(?1))*+\)|\b\w+\b|\d+\.\d+|d+)\*\*(-?\w*\((?:[^()]++|(?1))*+\)|-?\b\w+\b|\d+\.\d*|\d+)')
-    
+    # Convert ** operator to pow function - seems much faster
     while '**' in expression:
         expression = pattern.sub(r'pow(\1,\2)', expression)
     return expression
@@ -47,7 +49,7 @@ def insert_multiplication_signs(equation):
     equation = re.sub(r'(\d)(\()', r'\1*\2', equation)
     equation = re.sub(r'(\))(\d)', r'\1*\2', equation)
     # Replace terms like "2sin(x)" with "2*sin(x)"
-    equation = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', equation)
+    equation = re.sub(r'(\d)([a-ik-zA-Z])', r'\1*\2', equation)
     # Handle cases like (x)(x) and sin(x)x
     equation = re.sub(r'(\))(\()', r'\1*\2', equation)
     equation = re.sub(r'(x)([a-zA-Z])', r'\1*\2', equation)
@@ -58,17 +60,16 @@ def insert_multiplication_signs(equation):
 
 def getInput():
     while True:
-        equation = input("\nEnter an equation in terms of x:\n").strip().lower().replace(" ","").replace("^","**")
+        equation = input("\nEnter an equation in terms of x, or an expression without an equals sign or variables:\n").strip().lower().replace(" ","").replace("^","**")
         equation = replace_exponentiation(equation)
         equation = insert_multiplication_signs(equation)
         eq = checkInput(equation)
         if eq is None:
             continue
         out, onlyeval = eq[0].split("="), eq[1]
-        out = f"({out[0]})-({out[1]})" if not(onlyeval) else equation
-        print("Interpreted equation:", equation)
-        print(out)
-        print()
+        out = equation if onlyeval else f"({out[0]})-({out[1]}) = 0"
+        print(f"\nInterpreted {'expression' if onlyeval else 'equation'}: {out}\n")
+        # print(out)
         return out, onlyeval
 
 def checkInput(equation):
@@ -78,7 +79,6 @@ def checkInput(equation):
             print("Incorrect brackets.")
             return None
         names = set(node.id for node in ast.walk(ast.parse(equation)) if isinstance(node, ast.Name))
-        
         if names - math_names != set():
             print("Invalid variable(s) or function(s).")
             return None
@@ -97,7 +97,7 @@ def checkInput(equation):
             if not bracketCheck(part):
                 print("Incorrect brackets.")
                 return None
-        print(separate)
+        # print(separate)
         # Extract variable names
         names = set(
             node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
@@ -187,16 +187,19 @@ def halleysMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     return None
 
 def makeInitialGuesses(equation):
-    inipowers = 2
+    rangeOfPowers = 2
+    base = 5 
     initials = [0]
     
-    for i in range(-inipowers, inipowers+1):
-        initials += [5**i, -5**i] # 5 seems to be much more well behaved than 10
+    for i in range(-rangeOfPowers, rangeOfPowers+1):
+        initials += [base**i, -base**i] # 5 seems to be much more well behaved than 10
     
     reals = []
     for i in initials:
         inDomain = (evaluate(equation, i) != None)
         validDerivative = (firstDerivative(equation, i) != None)
+        # if the guess can survive at least one iteration of the Newton's method, 
+        # allow it
         if inDomain and validDerivative:
             reals.append(i)
             
@@ -228,22 +231,31 @@ def solve(equation, found=None):
 
 def printRoots(equation, roots, evalonly=False):
     if evalonly:
-        print(f"Value of expression: {roots+0.0}")
+        imagcomponent = roots.imag if abs(roots.imag) > 1e-20 else 0
+        print(f"Value of expression: {roots.real+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
         return
-    roots = roots = [i for i in sorted(list(set(roots)), key=abs) if abs(evaluate(equation, i)) < 1e-10]
-    realroots = [f"{round(i, 6)+0.0}" for i in roots]
+    # Sort roots by absolute value and remove insanity values
+    roots = [i for i in roots if abs(evaluate(equation, i)) < 1e-10]
+    roots = sorted(list(set(roots)), key=abs)
+    realroots, complexroots = [], []
+    for i in roots:
+        if abs(i.imag) < 1e-10:
+            realroots.append(f"{round(i.real, 6)+0.0}")
+        else:
+            imaginary = round(i.imag, 6)+0.0
+            complexroots.append(f"{round(i.real, 6)+0.0}{'+' if imaginary > 0 else ''}{imaginary}i")
     realroots = ", ".join(realroots)
-    print(f"Roots found:\nx = {realroots}")
+    complexroots = ", ".join(complexroots)
+    if complexroots:
+        print(f"{f'Real solutions:\nx = {realroots}' if realroots else ''}\nComplex solutions:\nx = {complexroots}")
+    else:
+        print(f"Solutions found:\nx = {realroots}")
 
 def main():
     while True:
         eq,evalonly = getInput()
         if evalonly:
             roots = evaluate(eq, None)
-            try:
-                roots = float(roots)
-            except:
-                roots = None
             if roots == None:
                 print("Invalid expression.")
                 continue
@@ -252,7 +264,8 @@ def main():
             if roots == []:
                 print("Can't solve.")
                 continue
-        print("found root list:", roots)
+        print("pre-processing solution list:", roots)
+        print()
         printRoots(eq, roots, evalonly)
 ##        while True:
 ##            again = input("\nAnother equation? (y/n)\t").lower().strip()
