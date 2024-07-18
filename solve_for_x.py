@@ -71,54 +71,49 @@ def getInput():
         return out, onlyeval
 
 def checkInput(equation):
-    onlyeval = False
-    if "=" not in equation:
-        print("Missing an equals sign.")
-        return None
-    
-    if "x" not in equation:
-        print("No x-variable to solve for.")
-        return None
-        
-    separate = equation.split("=")
-    if len(separate) > 2:
-        print("Only one equals sign allowed.")
-        return None
-    
-    elif len(separate) == 1:
-        onlyeval = True
-        
-    if "" in separate:
-        print("Empty left or right side.")
-        return None
-
-    for part in separate:
-        if not bracketCheck(part):
+    onlyeval = False if "=" in equation else True
+    if onlyeval:
+        if not(bracketCheck(equation)):
             print("Incorrect brackets.")
             return None
-    print(separate)
-    # Extract variable names
-    names = set(
-        node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
-    ).union(
-        node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
-    ) if not onlyeval else set(
-        node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
-    )
-
-    for i in names:
-        if i in {"log"}:
-            print("Note: using logs can'sudoku_solver_refactor.py")
-        elif i in undesired:
-            print(i, "is an unsupported function.")
+        names = set(node.id for node in ast.walk(ast.parse(equation)) if isinstance(node, ast.Name))
+        if not names.issubset(math_names):
+            print("Invalid function(s).")
             return None
-    # Remove math module names from the set of names
-    print(names)
-    names -= math_names
-    print(names)
-    if (not onlyeval and names != {"x"}) or (onlyeval and names != set()):
-        print("Incorrect variable/function usage.")
-        return None
+        
+    else:
+        separate = equation.split("=")
+        if len(separate) > 2:
+            print("Only one equals sign allowed.")
+            return None
+            
+        if "" in separate:
+            print("Empty side of equation.")
+            return None
+
+        for part in separate:
+            if not bracketCheck(part):
+                print("Incorrect brackets.")
+                return None
+        print(separate)
+        # Extract variable names
+        names = set(
+            node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
+        ).union(
+            node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
+        )
+
+        for i in names:
+            if i in {"log"}:
+                print("Note: using logs can't guarantee precision. or even a solution found.")
+            elif i in undesired:
+                print(i, "is an unsupported function.")
+                return None
+        # Remove math module names from the set of names
+        names -= math_names
+        if names != {"x"}:
+            print("Incorrect variable/function usage.")
+            return None
 
     return equation, onlyeval
 
@@ -153,7 +148,7 @@ def secondDerivative(equation, x):
 
     return (fxph - 2*fx + fxmh) / (h**2)
 
-def newtonsMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
+def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     maxIters = 1000
     x=x0
     for _ in range(maxIters):
@@ -165,11 +160,11 @@ def newtonsMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
         if denominator == 0 or numerator == None or denominator == None:
             return None
         x -= (numerator/denominator)
-    if abs(numerator) < epsilon*abs(numerator) or abs(prevx-x) < epsilon*abs(prevx-x):
+    if abs(numerator) < epsilon1 or abs(prevx-x) < epsilon2:
         return x
     return None
 
-def halleysMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
+def halleysMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     maxIters = 500
     x=x0
     for _ in range(maxIters):
@@ -186,7 +181,7 @@ def halleysMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
         if numerator == 0 or denominator == 0:
             return None
         x -= numerator/denominator
-    if abs(numerator) < epsilon*abs(numerator) or abs(prevx-x) < epsilon*abs(prevx-x):
+    if abs(numerator) < epsilon1 or abs(prevx-x) < epsilon2:
         return x
     return None
 
@@ -205,7 +200,7 @@ def makeInitialGuesses(equation):
             reals.append(i)
             
     return sorted(reals, key=abs)
-    
+
 def solve(equation, found=None):
     if found == None:
         found = []
@@ -230,21 +225,30 @@ def solve(equation, found=None):
     # Divide function by a root and continue
     return solve(divided, found)
 
+def printRoots(roots, evalonly=False):
+    if evalonly:
+        print(f"Value of expression: {round(roots, 6)+0.0}")
+        return
+    roots = sorted(list(set(roots)), key=abs)
+    realroots = [f"{round(i, 6)+0.0}" for i in roots]
+    realroots = ", ".join(realroots)
+    print(f"Roots found:\nx = {realroots}")
+
 def main():
     while True:
         eq,evalonly = getInput()
         if evalonly:
-            roots = evaluate(eq, 0)
+            roots = float(evaluate(eq, 0))
+            if roots == None:
+                print("Can't solve.")
+                continue
         else:
             roots = solve(eq)
-        if roots == []:
-            print("Can't solve.")
-            continue
+            if roots == []:
+                print("Can't solve.")
+                continue
         print(roots)
-        roots = sorted(list(set(roots)), key=abs)
-        realroots = [f"{round(i, 6)+0.0}" for i in roots]
-        realroots = ", ".join(realroots)
-        print(f"Roots found:\nx = {realroots}")
+        printRoots(roots, evalonly)
 ##        while True:
 ##            again = input("\nAnother equation? (y/n)\t").lower().strip()
 ##            if again in {"y", "yes"}:
