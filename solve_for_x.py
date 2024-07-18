@@ -59,29 +59,34 @@ def getInput():
         equation = input("\nEnter an equation in terms of x:\n").strip().lower().replace(" ","").replace("^","**")
         equation = replace_exponentiation(equation)
         equation = insert_multiplication_signs(equation)
-        res = checkInput(equation)
-        if res is None:
+        eq = checkInput(equation)
+        if eq is None:
             continue
-        out = f"({res[0]})-({res[1]})"
+        onlyeval = eq[1]
+        out = eq[0].split("=")
+        out = f"({out[0]})-({out[1]})" if not(onlyeval) else equation
         print("Interpreted equation:", equation)
         print(out)
         print()
-        return out
+        return out, onlyeval
 
 def checkInput(equation):
-    if "=" not in equation:
-        print("Missing an equals sign.")
-        return None
+    onlyeval = False
+##    if "=" not in equation:
+##        print("Missing an equals sign.")
+##        return None
     
-    if "x" not in equation:
-        print("No x-variable to solve for.")
-        return None
+##    if "x" not in equation:
+##        print("No x-variable to solve for.")
+##        return None
         
     separate = equation.split("=")
-    if len(separate)!= 2:
+    if len(separate) > 2:
         print("Only one equals sign allowed.")
         return None
-
+    elif len(separate) == 1:
+        onlyeval = True
+        
     if "" in separate:
         print("Empty left or right side.")
         return None
@@ -96,6 +101,8 @@ def checkInput(equation):
         node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
     ).union(
         node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
+    ) if not onlyeval else set(
+        node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
     )
 
     for i in names:
@@ -105,12 +112,14 @@ def checkInput(equation):
             print(i, "is an unsupported function.")
             return None
     # Remove math module names from the set of names
+    print(names)
     names -= math_names
-    if names != {"x"}:
-        print("Incorrect variable usage.")
-        return None
+    print(names)
+##    if names != {"x"} or names != set():
+##        print("Incorrect variable usage.")
+##        return None
 
-    return separate[0], separate[1]
+    return equation, onlyeval
 
 def applyDivision(equation, foundroot):
     return "(" + equation + ")/(x-(" + str(foundroot)+"))"
@@ -153,14 +162,10 @@ def newtonsMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
             return x
         denominator = firstDerivative(equation, x)
         if denominator == 0 or numerator == None or denominator == None:
-            print("PROBLEM in EVAL, REJECTED after", _, "iters")
             return None
         x -= (numerator/denominator)
-        if (_+1)%500==0:
-            print(f"after {_+1} iters, x is {x}")
-    if abs(numerator) < epsilon1 or abs(prevx-x) < epsilon2:
+    if abs(numerator) < epsilon*abs(numerator) or abs(prevx-x) < epsilon*abs(prevx-x):
         return x
-    print("NOT CLOSE enough")
     return None
 
 def halleysMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
@@ -170,7 +175,6 @@ def halleysMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
         prevx = x
         fx = evaluate(equation, x)
         if fx == 0:
-            print("found exactly zero")
             return x
         firstD = firstDerivative(equation, x)
         secondD = secondDerivative(equation, x)
@@ -181,11 +185,7 @@ def halleysMethod(equation, x0, epsilon1=1e-10, epsilon2=1e-10):
         if numerator == 0 or denominator == 0:
             return None
         x -= numerator/denominator
-    if abs(numerator) < epsilon1:
-        print("close enough", x, equation)
-        return x
-    if abs(prevx-x) < epsilon2:
-        print("stopped changing enough")
+    if abs(numerator) < epsilon*abs(numerator) or abs(prevx-x) < epsilon*abs(prevx-x):
         return x
     return None
 
@@ -210,11 +210,15 @@ def solve(equation, found=None):
         found = []
     guesses = makeInitialGuesses(equation)
     for i in guesses:
-        result = newtonsMethod(equation, i)
+        result = None
+        try:
+            result = halleysMethod(equation, i) # try halley's method
+        except:
+            pass
         if result == None:
-            print("WENT WRONG")
-            continue
-        print(result, "was ACCEPTED")
+            result = newtonsMethod(equation, i)
+            if result == None:
+                continue
         found.append(result)
         divided = applyDivision(equation, result)
         break
@@ -225,7 +229,6 @@ def solve(equation, found=None):
 
     # If we've found a lot of roots, don't bother with anymore.
     if len(found) >= 10:
-        print("Max number of roots found was exceeded.")
         return found
 
     # Divide function by a root and continue
@@ -233,17 +236,17 @@ def solve(equation, found=None):
 
 def main():
     while True:
-        eq = getInput()
-        roots = solve(eq)
+        eq,evalonly = getInput()
+        if evalonly:
+            roots = evaluate(eq, 0)
+        else:
+            roots = solve(eq)
         if roots == []:
             print("Can't solve.")
             continue
         print(roots)
-        for i in roots:
-            print(i, "evaluated to", evaluate(eq, i))
-        # Because division introduces insanity, check for absurd values
-        roots = [i for i in sorted(list(set(roots)), key=abs) if abs(evaluate(eq, i)) < 1e-10]
-        realroots = [f"{round(i, 5)+0.0 if abs(i) > 1e-5 else i}" for i in roots]
+        roots = sorted(list(set(roots)), key=abs)
+        realroots = [f"{round(i, 6)+0.0}" for i in roots]
         realroots = ", ".join(realroots)
         print(f"Roots found:\nx = {realroots}")
 ##        while True:
