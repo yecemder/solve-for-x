@@ -19,14 +19,14 @@ def sgn(x):
     return 1 if x > 0 else -1 if x < 0 else 0
 
 def bracketCheck(expression):
-    # Check if brackets are valid
+    # Check if brackets are balanced
     stack = []
-    brackets = {'(': ')', '{': '}', '[': ']'}
-    for char in expression:
-        if char in brackets:
-            stack.append(char)
-        elif char in brackets.values():
-            if not stack or brackets[stack.pop()]!= char:
+    bracket_map = {')': '(', '}': '{', ']': '['}
+    for c in expression:
+        if c in bracket_map.values():
+            stack.append(c)
+        elif c in bracket_map:
+            if not stack or bracket_map[c] != stack.pop():
                 return False
     return not stack
 
@@ -62,8 +62,7 @@ def getInput():
         eq = checkInput(equation)
         if eq is None:
             continue
-        onlyeval = eq[1]
-        out = eq[0].split("=")
+        out, onlyeval = eq[0].split("="), eq[1]
         out = f"({out[0]})-({out[1]})" if not(onlyeval) else equation
         print("Interpreted equation:", equation)
         print(out)
@@ -77,8 +76,9 @@ def checkInput(equation):
             print("Incorrect brackets.")
             return None
         names = set(node.id for node in ast.walk(ast.parse(equation)) if isinstance(node, ast.Name))
-        if not names.issubset(math_names):
-            print("Invalid function(s).")
+        
+        if names - math_names != set():
+            print("Invalid variable(s) or function(s).")
             return None
         
     else:
@@ -102,17 +102,16 @@ def checkInput(equation):
         ).union(
             node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
         )
+        
+        if names - math_names != {"x"}:
+            print("Invalid variable(s) or function(s).")
+            return None
 
-        for i in names:
-            if i in {"log"}:
-                print("Note: using logs can't guarantee precision. or even a solution found.")
-            elif i in undesired:
-                print(i, "is an unsupported function.")
-                return None
-        # Remove math module names from the set of names
-        names -= math_names
-        if names != {"x"}:
-            print("Incorrect variable/function usage.")
+    for i in names:
+        if i in {"log"}:
+            print("Note: using logs can't guarantee precision. or even a solution found.")
+        elif i in undesired:
+            print(i, "is an unsupported function.")
             return None
 
     return equation, onlyeval
@@ -225,11 +224,11 @@ def solve(equation, found=None):
     # Divide function by a root and continue
     return solve(divided, found)
 
-def printRoots(roots, evalonly=False):
+def printRoots(equation, roots, evalonly=False):
     if evalonly:
-        print(f"Value of expression: {round(roots, 6)+0.0}")
+        print(f"Value of expression: {roots+0.0}")
         return
-    roots = sorted(list(set(roots)), key=abs)
+    roots = roots = [i for i in sorted(list(set(roots)), key=abs) if abs(evaluate(equation, i)) < 1e-10]
     realroots = [f"{round(i, 6)+0.0}" for i in roots]
     realroots = ", ".join(realroots)
     print(f"Roots found:\nx = {realroots}")
@@ -238,9 +237,13 @@ def main():
     while True:
         eq,evalonly = getInput()
         if evalonly:
-            roots = float(evaluate(eq, 0))
+            roots = evaluate(eq, None)
+            try:
+                roots = float(roots)
+            except:
+                roots = None
             if roots == None:
-                print("Can't solve.")
+                print("Invalid expression.")
                 continue
         else:
             roots = solve(eq)
@@ -248,7 +251,7 @@ def main():
                 print("Can't solve.")
                 continue
         print(roots)
-        printRoots(roots, evalonly)
+        printRoots(eq, roots, evalonly)
 ##        while True:
 ##            again = input("\nAnother equation? (y/n)\t").lower().strip()
 ##            if again in {"y", "yes"}:
