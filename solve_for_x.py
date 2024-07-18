@@ -220,7 +220,7 @@ def solve(equation, found=None):
 
     # If we've found a lot of roots, don't bother with anymore.
     if len(found) >= 10:
-        print("enough roots found")
+        print("Max number of roots reached, stopping search")
         return found
 
     # Divide function by a root and continue
@@ -252,7 +252,7 @@ def main():
             if roots == []:
                 print("Can't solve.")
                 continue
-        print(roots)
+        print("found root list:", roots)
         printRoots(eq, roots, evalonly)
 ##        while True:
 ##            again = input("\nAnother equation? (y/n)\t").lower().strip()
