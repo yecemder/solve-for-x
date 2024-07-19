@@ -67,8 +67,8 @@ def getInput():
         if eq is None:
             continue
         out, onlyeval = eq[0].split("="), eq[1]
-        out = equation if onlyeval else f"({out[0]})-({out[1]}) = 0"
-        print(f"\nInterpreted {'expression' if onlyeval else 'equation'}: {out}\n")
+        out = equation if onlyeval else f"({out[0]})-({out[1]})"
+        print(f"\nInterpreted {'expression' if onlyeval else 'equation'}: {out}{'' if onlyeval else ' = 0'}\n")
         # print(out)
         return out, onlyeval
 
@@ -194,16 +194,16 @@ def makeInitialGuesses(equation):
     for i in range(-rangeOfPowers, rangeOfPowers+1):
         initials += [base**i, -base**i] # 5 seems to be much more well behaved than 10
     
-    reals = []
+    valids = []
     for i in initials:
         inDomain = (evaluate(equation, i) != None)
         validDerivative = (firstDerivative(equation, i) != None)
         # if the guess can survive at least one iteration of the Newton's method, 
         # allow it
         if inDomain and validDerivative:
-            reals.append(i)
+            valids.append(i)
             
-    return sorted(reals, key=abs)
+    return sorted(valids, key=abs)
 
 def solve(equation, found=None):
     if found == None:
@@ -229,27 +229,26 @@ def solve(equation, found=None):
     # Divide function by a root and continue
     return solve(divided, found)
 
-def printRoots(equation, roots, evalonly=False):
+def printRoots(equation, solutions, evalonly=False):
     if evalonly:
-        imagcomponent = roots.imag if abs(roots.imag) > 1e-20 else 0
-        print(f"Value of expression: {roots.real+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
+        imagcomponent = solutions.imag if abs(solutions.imag) > 1e-20 else 0
+        print(f"Value of expression: {solutions.real+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
         return
     # Sort roots by absolute value and remove insanity values
-    roots = [i for i in roots if abs(evaluate(equation, i)) < 1e-10]
-    roots = sorted(list(set(roots)), key=abs)
-    realroots, complexroots = [], []
-    for i in roots:
+    solutions = sorted(list(set([i for i in solutions if abs(evaluate(equation, i)) < 1e-10])), key=abs)
+    realsolutions, complexsolutions = [], []
+    for i in solutions:
         if abs(i.imag) < 1e-10:
-            realroots.append(f"{round(i.real, 6)+0.0}")
+            realsolutions.append(f"{round(i.real, 6)+0.0}")
         else:
             imaginary = round(i.imag, 6)+0.0
-            complexroots.append(f"{round(i.real, 6)+0.0}{'+' if imaginary > 0 else ''}{imaginary}i")
-    realroots = ", ".join(realroots)
-    complexroots = ", ".join(complexroots)
-    if complexroots:
-        print(f"{f'Real solutions:\nx = {realroots}' if realroots else ''}\nComplex solutions:\nx = {complexroots}")
+            complexsolutions.append(f"{round(i.real, 6)+0.0}{'+' if imaginary > 0 else ''}{imaginary}i")
+    realsolutions = ", ".join(realsolutions)
+    complexsolutions = ", ".join(complexsolutions)
+    if complexsolutions:
+        print(f"{f'Real solutions:\nx = {realsolutions}' if realsolutions else ''}\nComplex solutions:\nx = {complexsolutions}")
     else:
-        print(f"Solutions found:\nx = {realroots}")
+        print(f"Solutions found:\nx = {realsolutions}")
 
 def main():
     while True:
