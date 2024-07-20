@@ -111,7 +111,7 @@ def checkInput(equation):
 
     for i in names:
         if i in {"log"}:
-            print("Note: using logs can't guarantee precision. or even a solution found.")
+            print("Note: logs tend to be unstable with Newton's method. Try converting to exponential form if possible.")
         elif i in undesired:
             print(i, "is an unsupported function.")
             return None
@@ -129,9 +129,7 @@ def evaluate(expression, x):
 
 def getDerivativeConsts(x):
     h = x * sqrtepsilon if x != 0 else sqrtepsilon
-    xph = x + h
-    xmh = x - h
-    return h, xph, xmh
+    return h, x + h, x - h
 
 def firstDerivative(equation, x):
     h, xph, xmh = getDerivativeConsts(x)
@@ -139,15 +137,6 @@ def firstDerivative(equation, x):
     fxmh = evaluate(equation, xmh)
     if fxph==None or fxmh==None: return None
     return (fxph - fxmh) / (2 * h)
-
-def secondDerivative(equation, x):
-    h, xph, xmh = getDerivativeConsts(x)
-    fx = evaluate(equation, x)
-    fxph = evaluate(equation, xph)
-    fxmh = evaluate(equation, xmh)
-    if fx==None or fxph==None or fxmh==None: return None
-
-    return (fxph - 2*fx + fxmh) / (h**2)
 
 def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     maxIters = 1000
@@ -161,27 +150,6 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
         if denominator == 0 or numerator == None or denominator == None:
             return None
         x -= (numerator/denominator)
-    if abs(numerator) < epsilon1 or abs(prevx-x) < epsilon2:
-        return x
-    return None
-
-def halleysMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
-    maxIters = 500
-    x=x0
-    for _ in range(maxIters):
-        prevx = x
-        fx = evaluate(equation, x)
-        if fx == 0:
-            return x
-        firstD = firstDerivative(equation, x)
-        secondD = secondDerivative(equation, x)
-        if None in (fx, firstD, secondD):
-            return None
-        numerator = 2 * fx * firstD
-        denominator = 2*pow(firstD, 2) - (fx*secondD)
-        if numerator == 0 or denominator == 0:
-            return None
-        x -= numerator/denominator
     if abs(numerator) < epsilon1 or abs(prevx-x) < epsilon2:
         return x
     return None
@@ -235,7 +203,7 @@ def printRoots(equation, solutions, evalonly=False):
         print(f"Value of expression: {solutions.real+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
         return
     # Sort roots by absolute value and remove insanity values
-    solutions = sorted(list(set([i for i in solutions if abs(evaluate(equation, i)) < 1e-10])), key=abs)
+    solutions = sorted(list(set([i for i in solutions if abs(evaluate(equation, i)) < 1e-8])), key=abs)
     realsolutions, complexsolutions = [], []
     for i in solutions:
         if abs(i.imag) < 1e-10:
@@ -255,13 +223,23 @@ def main():
         eq,evalonly = getInput()
         if evalonly:
             roots = evaluate(eq, None)
-            if roots == None:
-                print("Invalid expression.")
+            try:
+                abs(roots)
+            except:
+                print("Input invalid or out of domain.")
                 continue
         else:
-            roots = solve(eq)
+            outs = solve(eq)
+            roots = []
+            for i in outs:
+                try:
+                    abs(i)
+                except:
+                    continue
+                else:
+                    roots.append(i)
             if roots == []:
-                print("Can't solve.")
+                print("No solutions found.")
                 continue
         print("pre-processing solution list:", roots)
         print()
