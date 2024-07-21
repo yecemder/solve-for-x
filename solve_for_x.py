@@ -19,9 +19,6 @@ builtins = {"abs", "c"}
 undesired = {"log10", "atan2"}
 math_names = math_names.union(builtins).union(cmath_names)#.difference(undesired)
 
-def sgn(x):
-    return 1 if x > 0 else -1 if x < 0 else 0
-
 def bracketCheck(expression):
     # Check if brackets are balanced
     stack = []
@@ -49,6 +46,7 @@ def insert_multiplication_signs(equation):
     equation = re.sub(r'(\d)(\()', r'\1*\2', equation)
     equation = re.sub(r'(\))(\d)', r'\1*\2', equation)
     # Replace terms like "2sin(x)" with "2*sin(x)"
+    # Don't replace a number followed by "j" because that's python's imaginary number
     equation = re.sub(r'(\d)([a-ik-zA-Z])', r'\1*\2', equation)
     # Handle cases like (x)(x) and sin(x)x
     equation = re.sub(r'(\))(\()', r'\1*\2', equation)
@@ -157,7 +155,7 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
 def makeInitialGuesses(equation):
     rangeOfPowers = 2
     base = 5 
-    initials = [0]
+    initials = [0, -1-1j]
     
     for i in range(-rangeOfPowers, rangeOfPowers+1):
         initials += [base**i, -base**i] # 5 seems to be much more well behaved than 10
@@ -170,7 +168,16 @@ def makeInitialGuesses(equation):
         # allow it
         if inDomain and validDerivative:
             valids.append(i)
-            
+    
+    # If we couldn't find a valid initial guess, make one
+    guess = 0
+    while (len(valids) == 0 and guess < 10000):
+        if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
+            valids.append(guess)
+        if guess < 0:
+            guess = -guess + 1
+        else:
+            guess *= -1
     return sorted(valids, key=abs)
 
 def solve(equation, found=None):
@@ -203,7 +210,8 @@ def printRoots(equation, solutions, evalonly=False):
         print(f"Value of expression: {solutions.real+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
         return
     # Sort roots by absolute value and remove insanity values
-    solutions = sorted(list(set([i for i in solutions if abs(evaluate(equation, i)) < 1e-8])), key=abs)
+    highvals = sorted(list(set([i for i in solutions if abs(i) > 1e10])), key=abs)
+    solutions = sorted(list(set([i for i in solutions if (abs(evaluate(equation, i)) < 1e-8) and (abs(i) < 1e10)])), key=abs)
     realsolutions, complexsolutions = [], []
     for i in solutions:
         if abs(i.imag) < 1e-10:
@@ -217,6 +225,14 @@ def printRoots(equation, solutions, evalonly=False):
         print(f"{f'Real solutions:\nx = {realsolutions}' if realsolutions else ''}\nComplex solutions:\nx = {complexsolutions}")
     else:
         print(f"Solutions found:\nx = {realsolutions}")
+    
+    if len(highvals) > 0:
+        formatted_highvals = []
+        for i in highvals:
+            imagcomponent = i.imag if abs(i.imag) > 1e-20 else 0
+            formatted_highvals.append(f"{round(i.real, 6)+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
+        
+        print(f"\nAlso found the following large solutions:\nx = {', '.join(formatted_highvals)}")
 
 def main():
     while True:
