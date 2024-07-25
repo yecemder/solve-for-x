@@ -10,14 +10,11 @@ pow = __builtins__.pow
 math_names = {name for name in dir(math)}
 cmath_names = {name for name in dir(c)}
 
+builtins = {"abs", "c"}
+math_names = math_names.union(builtins).union(cmath_names)
+
 epsilon = 2.220446049250313e-16
 sqrtepsilon = 1.4901161193847656e-08 # Square root of Python epsilon
-
-builtins = {"abs", "c"}
-# Regex for implicit multiplication can't handle these functions, 
-# it thinks it's multiplication because of a number followed by a bracket.
-undesired = {"log10", "atan2"}
-math_names = math_names.union(builtins).union(cmath_names)#.difference(undesired)
 
 def bracketCheck(expression):
     # Check if brackets are balanced
@@ -33,7 +30,7 @@ def bracketCheck(expression):
 
 def replace_exponentiation(expression):
     # Regex pattern to match the base and exponent of ** operator
-    pattern = re.compile(r'(\w*\((?:[^()]++|(?1))*+\)|\b\w+\b|\d+\.\d+|d+)\*\*(-?\w*\((?:[^()]++|(?1))*+\)|-?\b\w+\b|\d+\.\d*|\d+)')
+    pattern = re.compile(r'(\w*\((?:[^()]++|(?1))*+\)|\b\w+\b|\d+\.\d+|\d+)\*\*(-?\w*\((?:[^()]++|(?1))*+\)|-?\b\w+\b|\d+\.\d*|\d+)')
     # Convert ** operator to pow function - seems much faster
     while '**' in expression:
         expression = pattern.sub(r'pow(\1,\2)', expression)
@@ -43,24 +40,24 @@ def insert_multiplication_signs(equation):
     # Replace terms like "2x" with "2*x"
     equation = re.sub(r'(\d)(x)', r'\1*\2', equation)
     equation = re.sub(r'(x)(\d)', r'\1*\2', equation)
-    equation = re.sub(r'(\d)(\()', r'\1*\2', equation)
+    equation = re.sub(r'(?<![a-z])\b(\d+)(\()', r'\1*\2', equation)
     equation = re.sub(r'(\))(\d)', r'\1*\2', equation)
     # Replace terms like "2sin(x)" with "2*sin(x)"
     # Don't replace a number followed by "j" because that's python's imaginary number
-    equation = re.sub(r'(\d)([a-ik-zA-Z])', r'\1*\2', equation)
+    equation = re.sub(r'(\d)([a-ik-z])', r'\1*\2', equation)
     # Handle cases like (x)(x) and sin(x)x
     equation = re.sub(r'(\))(\()', r'\1*\2', equation)
-    equation = re.sub(r'(x)([a-zA-Z])', r'\1*\2', equation)
-    equation = re.sub(r'(\))([a-zA-Z])', r'\1*\2', equation)
-    # equation = re.sub(r'([a-zA-Z])(\()', r'\1*\2', equation)
-    # equation = re.sub(r'([a-zA-Z])([a-zA-Z])', r'\1*\2', equation)
+    equation = re.sub(r'(x)([a-z])', r'\1*\2', equation)
+    equation = re.sub(r'(\))([a-z])', r'\1*\2', equation)
+    equation = re.sub(r'(?<![a-z])(x)(\()', r'\1*\2', equation)
     return equation
 
 def getInput():
     while True:
-        equation = input("\nEnter an equation in terms of x, or an expression without an equals sign or variables:\n").strip().lower().replace(" ","").replace("^","**")
-        equation = replace_exponentiation(equation)
+        equation = input("\nEnter an equation in terms of x, or an expression without an equals sign or variables:\n")
+        equation = equation.strip().lower().replace(" ","").replace("^","**")
         equation = insert_multiplication_signs(equation)
+        equation = replace_exponentiation(equation)
         eq = checkInput(equation)
         if eq is None:
             continue
@@ -80,7 +77,7 @@ def checkInput(equation):
         if names - math_names != set():
             print("Invalid variable(s) or function(s).")
             return None
-        
+    
     else:
         separate = equation.split("=")
         if len(separate) > 2:
@@ -95,7 +92,7 @@ def checkInput(equation):
             if not bracketCheck(part):
                 print("Incorrect brackets.")
                 return None
-        # print(separate)
+        
         # Extract variable names
         names = set(
             node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
@@ -106,13 +103,10 @@ def checkInput(equation):
         if names - math_names != {"x"}:
             print("Invalid variable(s) or function(s).")
             return None
-
-    for i in names:
-        if i in {"log"}:
-            print("Note: logs tend to be unstable with Newton's method. Try converting to exponential form if possible.")
-        elif i in undesired:
-            print(i, "is an unsupported function.")
-            return None
+    
+        for i in names:
+            if i in {"log", "log10", "log2"}:
+                print("Note: logs tend to be unstable with Newton's method. Try converting to exponential form if possible.")
 
     return equation, onlyeval
 
@@ -171,7 +165,7 @@ def makeInitialGuesses(equation):
     
     # If we couldn't find a valid initial guess, make one
     guess = 0
-    while (len(valids) == 0 and guess < 10000):
+    while (len(valids) == 0 and guess <= 10000):
         if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
             valids.append(guess)
         if guess < 0:
@@ -210,7 +204,7 @@ def printRoots(equation, solutions, evalonly=False):
         print(f"Value of expression: {solutions.real+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
         return
     # Sort roots by absolute value and remove insanity values
-    highvals = sorted(list(set([i for i in solutions if abs(i) > 1e10])), key=abs)
+    highvals = sorted(list(set([i for i in solutions if abs(i) >= 1e10])), key=abs)
     solutions = sorted(list(set([i for i in solutions if (abs(evaluate(equation, i)) < 1e-8) and (abs(i) < 1e10)])), key=abs)
     realsolutions, complexsolutions = [], []
     for i in solutions:
