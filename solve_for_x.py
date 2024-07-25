@@ -164,12 +164,12 @@ def makeInitialGuesses(equation):
             valids.append(i)
     
     # If we couldn't find a valid initial guess, make one
-    guess = 0
-    while (len(valids) == 0 and guess <= 10000):
+    guess = 1
+    while (len(valids) == 0 and guess <= 1e50):
         if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
             valids.append(guess)
         if guess < 0:
-            guess = -guess + 1
+            guess *= -10
         else:
             guess *= -1
     return sorted(valids, key=abs)
