@@ -30,7 +30,7 @@ def bracketCheck(expression):
 
 def replace_exponentiation(expression):
     # Regex pattern to match the base and exponent of ** operator
-    pattern = re.compile(r'(\w*\((?:[^()]++|(?1))*+\)|\b\w+\b|\d+\.\d+|\d+)\*\*(-?\w*\((?:[^()]++|(?1))*+\)|-?\b\w+\b|\d+\.\d*|\d+)')
+    pattern = re.compile(r'(\w*\((?:[^()]++|(?1))*+\)|\b[a-zA-Z0-9_\.]+\b|\d+\.\d+|\d+)\*\*(-?\w*\((?:[^()]++|(?1))*+\)|-?\b[a-zA-Z0-9_.]+\b|-?\d+\.\d*|\d+)')
     # Convert ** operator to pow function - seems much faster
     while '**' in expression:
         expression = pattern.sub(r'pow(\1,\2)', expression)
