@@ -9,7 +9,6 @@ pow = __builtins__.pow
 # Get all names from math module
 math_names = {name for name in dir(math)}
 cmath_names = {name for name in dir(c)}
-
 builtins = {"abs", "c"}
 math_names = math_names.union(builtins).union(cmath_names)
 
@@ -133,23 +132,39 @@ def firstDerivative(equation, x):
 def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     maxIters = 1000
     x=x0
+    change = float('inf')
     for _ in range(maxIters):
-        prevx = x
+        if change == 0: break # 0 change
+        if x != x: # NaN
+            print("NaN at x =", x)
+            return None
         numerator = evaluate(equation, x)
         if numerator == 0:
+            print("exact zero at x =", x)
             return x
         denominator = firstDerivative(equation, x)
-        if denominator == 0 or numerator == None or denominator == None:
+        if denominator == 0:
+            print("denom zero at x =", x, end=" ")
+            if abs(change) <= epsilon2:
+                print("was converging, accepted")
+                return x
+            print("convergence was too slow, change was", change, "eval", numerator)
             return None
-        x -= (numerator/denominator)
-    if abs(numerator) < epsilon1 or abs(prevx-x) < epsilon2:
+        if numerator == None or denominator == None:
+            print("invalid at x =", x, numerator, "/", denominator)
+            return None
+        change = numerator/denominator
+        x -= change
+    if abs(numerator) <= epsilon1 or abs(change) <= epsilon2:
+        print("accepted", x, "eval was", numerator, "change was", change, "after", maxIters, "iterations")
         return x
+    print("x =", x, "wasn't close enough, evaled to", numerator)
     return None
 
 def makeInitialGuesses(equation):
     rangeOfPowers = 2
     base = 5 
-    initials = [0, -1-1j]
+    initials = [0, 1+1j, -1-1j]
     
     for i in range(-rangeOfPowers, rangeOfPowers+1):
         initials += [base**i, -base**i] # 5 seems to be much more well behaved than 10
@@ -165,9 +180,10 @@ def makeInitialGuesses(equation):
     
     # If we couldn't find a valid initial guess, make one
     guess = 1
-    while (len(valids) == 0 and guess <= 1e50):
+    while (guess <= 1e50):
         if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
             valids.append(guess)
+            break
         if guess < 0:
             guess *= -10
         else:
@@ -201,18 +217,22 @@ def solve(equation, found=None):
 def printRoots(equation, solutions, evalonly=False):
     if evalonly:
         imagcomponent = solutions.imag if abs(solutions.imag) > 1e-20 else 0
-        print(f"Value of expression: {solutions.real+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
+        print(f"Value of expression: {solutions.real}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent}i' if imagcomponent != 0 else ''}")
         return
     # Sort roots by absolute value and remove insanity values
-    highvals = sorted(list(set([i for i in solutions if abs(i) >= 1e10])), key=abs)
-    solutions = sorted(list(set([i for i in solutions if (abs(evaluate(equation, i)) < 1e-8) and (abs(i) < 1e10)])), key=abs)
+    highvals = sorted(list(set([round(i.real,6)+round(i.imag,6)*1j for i in solutions if abs(i) >= 1e10 and abs(evaluate(equation, i)) < 1e-8])), key=abs)
+    solutions = sorted(list(set([round(i.real,6)+round(i.imag,6)*1j for i in solutions if (abs(evaluate(equation, i)) < 1e-10) and (abs(i) < 1e10)])), key=abs)
+    print(solutions)
     realsolutions, complexsolutions = [], []
     for i in solutions:
-        if abs(i.imag) < 1e-10:
-            realsolutions.append(f"{round(i.real, 6)+0.0}")
+        print("solution", i, "triggered", end=" ")
+        if abs(i.imag) < 1e-20:
+            print("real solution code")
+            realsolutions.append(f"{i.real}")
         else:
-            imaginary = round(i.imag, 6)+0.0
-            complexsolutions.append(f"{round(i.real, 6)+0.0}{'+' if imaginary > 0 else ''}{imaginary}i")
+            print("imaginary solution code")
+            imaginary = round(i.imag, 6)
+            complexsolutions.append(f"{i.real}{'+' if imaginary > 0 else '-'}{abs(imaginary) if abs(imaginary) != 1 else ''}i")
     realsolutions = ", ".join(realsolutions)
     complexsolutions = ", ".join(complexsolutions)
     if complexsolutions:
@@ -254,16 +274,6 @@ def main():
         print("pre-processing solution list:", roots)
         print()
         printRoots(eq, roots, evalonly)
-##        while True:
-##            again = input("\nAnother equation? (y/n)\t").lower().strip()
-##            if again in {"y", "yes"}:
-##                print()
-##                break
-##            elif again in {"n", "no"}:
-##                print("bye")
-##                return
-##            else:
-##                print("Didn't understand.")
 
 if __name__ == "__main__":
     main()
