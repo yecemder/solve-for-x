@@ -63,7 +63,6 @@ def getInput():
         out, onlyeval = eq[0].split("="), eq[1]
         out = equation if onlyeval else f"({out[0]})-({out[1]})"
         print(f"\nInterpreted {'expression' if onlyeval else 'equation'}: {out}{'' if onlyeval else ' = 0'}\n")
-        # print(out)
         return out, onlyeval
 
 def checkInput(equation):
@@ -133,14 +132,14 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     maxIters = 1000
     x=x0
     change = float('inf')
-    for _ in range(maxIters):
+    for iter in range(maxIters):
         if change == 0: break # 0 change
         if x != x: # NaN
-            print("NaN at x =", x)
+            print("NaN after", iter, "iterations")
             return None
         numerator = evaluate(equation, x)
         if numerator == 0:
-            print("exact zero at x =", x)
+            print("exact zero at x =", x, "after", iter, "iterations")
             return x
         denominator = firstDerivative(equation, x)
         if denominator == 0:
@@ -158,16 +157,16 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     if abs(numerator) <= epsilon1 or abs(change) <= epsilon2:
         print("accepted", x, "eval was", numerator, "change was", change, "after", maxIters, "iterations")
         return x
-    print("x =", x, "wasn't close enough, evaled to", numerator)
+    print("x =", x, "ran out of iterations, evaled to", numerator, "final change was", change)
     return None
 
 def makeInitialGuesses(equation):
     rangeOfPowers = 2
-    base = 5 
-    initials = [0, 1+1j, -1-1j]
+    base = 5 # 5 seems to be much more well behaved than 10
+    initials = [0, 1+1j, 1-1j]
     
     for i in range(-rangeOfPowers, rangeOfPowers+1):
-        initials += [base**i, -base**i] # 5 seems to be much more well behaved than 10
+        initials += [base**i, -base**i]
     
     valids = []
     for i in initials:
@@ -220,8 +219,8 @@ def printRoots(equation, solutions, evalonly=False):
         print(f"Value of expression: {solutions.real}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent}i' if imagcomponent != 0 else ''}")
         return
     # Sort roots by absolute value and remove insanity values
-    highvals = sorted(list(set([round(i.real,6)+round(i.imag,6)*1j for i in solutions if abs(i) >= 1e10 and abs(evaluate(equation, i)) < 1e-8])), key=abs)
-    solutions = sorted(list(set([round(i.real,6)+round(i.imag,6)*1j for i in solutions if (abs(evaluate(equation, i)) < 1e-10) and (abs(i) < 1e10)])), key=abs)
+    highvals = sorted(list(set([round(i.real,5)+round(i.imag,5)*1j for i in solutions if abs(i) >= 1e10 and abs(evaluate(equation, i)) < 1e-8])), key=abs)
+    solutions = sorted(list(set([round(i.real,5)+round(i.imag,5)*1j for i in solutions if (abs(evaluate(equation, i)) < 1e-10) and (abs(i) < 1e10)])), key=abs)
     print(solutions)
     realsolutions, complexsolutions = [], []
     for i in solutions:
@@ -231,7 +230,7 @@ def printRoots(equation, solutions, evalonly=False):
             realsolutions.append(f"{i.real}")
         else:
             print("imaginary solution code")
-            imaginary = round(i.imag, 6)
+            imaginary = round(i.imag,5)
             complexsolutions.append(f"{i.real}{'+' if imaginary > 0 else '-'}{abs(imaginary) if abs(imaginary) != 1 else ''}i")
     realsolutions = ", ".join(realsolutions)
     complexsolutions = ", ".join(complexsolutions)
@@ -244,7 +243,7 @@ def printRoots(equation, solutions, evalonly=False):
         formatted_highvals = []
         for i in highvals:
             imagcomponent = i.imag if abs(i.imag) > 1e-20 else 0
-            formatted_highvals.append(f"{round(i.real, 6)+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
+            formatted_highvals.append(f"{round(i.real,5)+0.0}{'+' if imagcomponent > 0 else ''}{f'{imagcomponent+0.0}i' if imagcomponent != 0 else ''}")
         
         print(f"\nAlso found the following large solutions:\nx = {', '.join(formatted_highvals)}")
 
