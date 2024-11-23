@@ -71,7 +71,11 @@ def checkInput(equation):
         if not(bracketCheck(equation)):
             print("Incorrect brackets.")
             return None
-        names = set(node.id for node in ast.walk(ast.parse(equation)) if isinstance(node, ast.Name))
+        try:
+            names = set(node.id for node in ast.walk(ast.parse(equation)) if isinstance(node, ast.Name))
+        except Exception as e:
+            print("Invalid formatting. Returned error:", e)
+            return None
         if names - math_names != set():
             print("Invalid variable(s) or function(s).")
             return None
@@ -92,11 +96,15 @@ def checkInput(equation):
                 return None
         
         # Extract variable names
-        names = set(
-            node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
-        ).union(
-            node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
-        )
+        try:
+            names = set(
+                node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
+            ).union(
+                node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
+            )
+        except Exception as e:
+            print("Invalid formatting. Returned error:", e)
+            return None
         
         if names - math_names != {"x"}:
             print("Invalid variable(s) or function(s).")
