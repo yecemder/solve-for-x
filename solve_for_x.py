@@ -71,7 +71,11 @@ def checkInput(equation):
         if not(bracketCheck(equation)):
             print("Incorrect brackets.")
             return None
-        names = set(node.id for node in ast.walk(ast.parse(equation)) if isinstance(node, ast.Name))
+        try:
+            names = set(node.id for node in ast.walk(ast.parse(equation)) if isinstance(node, ast.Name))
+        except Exception as e:
+            print("Invalid formatting. Returned error:", e)
+            return None
         if names - math_names != set():
             print("Invalid variable(s) or function(s).")
             return None
@@ -92,11 +96,15 @@ def checkInput(equation):
                 return None
         
         # Extract variable names
-        names = set(
-            node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
-        ).union(
-            node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
-        )
+        try:
+            names = set(
+                node.id for node in ast.walk(ast.parse(separate[0])) if isinstance(node, ast.Name)
+            ).union(
+                node.id for node in ast.walk(ast.parse(separate[1])) if isinstance(node, ast.Name)
+            )
+        except Exception as e:
+            print("Invalid formatting. Returned error:", e)
+            return None
         
         if names - math_names != {"x"}:
             print("Invalid variable(s) or function(s).")
@@ -139,7 +147,7 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
             return None
         numerator = evaluate(equation, x)
         if numerator == 0:
-            print("exact zero at x =", x, "after", iter, "iterations")
+            print("\nACCEPTED exact zero at x =", x, "after", iter, "iterations\n")
             return x
         denominator = firstDerivative(equation, x)
         if denominator == 0:
@@ -155,7 +163,7 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
         change = numerator/denominator
         x -= change
     if abs(numerator) <= epsilon1 or abs(change) <= epsilon2:
-        print("accepted", x, "eval was", numerator, "change was", change, "after", maxIters, "iterations")
+        print("\nACCEPTED x =", x, "eval was", numerator, "change was", change, "after", maxIters, "iterations\n")
         return x
     print("x =", x, "ran out of iterations, evaled to", numerator, "final change was", change)
     return None
