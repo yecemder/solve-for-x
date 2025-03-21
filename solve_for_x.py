@@ -234,6 +234,7 @@ def printRoots(equation, solutions, evalonly=False):
             complexsolutions.append(f"{i.real}{'+' if imaginary > 0 else '-'}{abs(imaginary) if abs(imaginary) != 1 else ''}i")
     realsolutions = ", ".join(realsolutions)
     complexsolutions = ", ".join(complexsolutions)
+    print()
     if complexsolutions:
         print(f"{f'Real solutions:\nx = {realsolutions}' if realsolutions else ''}\nComplex solutions:\nx = {complexsolutions}")
     else:
