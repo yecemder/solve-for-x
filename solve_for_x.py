@@ -14,6 +14,7 @@ math_names = math_names.union(builtins).union(cmath_names)
 
 epsilon = 2.220446049250313e-16
 sqrtepsilon = 1.4901161193847656e-08 # Square root of Python epsilon
+sqrtepsilon = 1e-10
 
 def bracketCheck(expression):
     # Check if brackets are balanced
@@ -171,10 +172,11 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
 def makeInitialGuesses(equation):
     rangeOfPowers = 2
     base = 5 # 5 seems to be much more well behaved than 10
-    initials = [0, 1+1j, 1-1j]
+    initials = [0]
     
     for i in range(-rangeOfPowers, rangeOfPowers+1):
         initials += [base**i, -base**i]
+    initials.extend([1+1j, 1-1j, -1+1j, -1-1j])
     
     valids = []
     for i in initials:
@@ -186,16 +188,18 @@ def makeInitialGuesses(equation):
             valids.append(i)
     
     # If we couldn't find a valid initial guess, make one
-    guess = 1
-    while (guess <= 1e50):
-        if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
-            valids.append(guess)
-            break
-        if guess < 0:
-            guess *= -10
-        else:
-            guess *= -1
-    return sorted(valids, key=abs)
+    if len(valids) == 0:
+        guess = 1e-100
+        while (guess <= 1e100):
+            if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
+                valids.append(guess)
+                break
+            if guess < 0:
+                guess *= -10
+            else:
+                guess *= -1
+    
+    return valids
 
 def solve(equation, found=None):
     if found == None:
