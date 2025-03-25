@@ -241,7 +241,6 @@ def makeInitialGuesses(equation, num_samples=100, range_val=100):
     out = list(guesses)
     reals, complexes = [i for i in out if isinstance(i, float) or isinstance(i, int)], [i for i in out if isinstance(i, complex)]
     reals, complexes = sorted(reals, key=abs), sorted(complexes, key=abs)
-    print(reals+complexes)
     return reals + complexes
 
 
