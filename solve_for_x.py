@@ -169,37 +169,81 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     print("x =", x, "ran out of iterations, evaled to", numerator, "final change was", change)
     return None
 
-def makeInitialGuesses(equation):
-    rangeOfPowers = 2
-    base = 5 # 5 seems to be much more well behaved than 10
-    initials = [0]
+def makeInitialGuesses(equation, num_samples=100, range_val=100):
+    """
+    Generates initial guesses by scanning a real interval and checking for:
+      - Points where the function is nearly zero.
+      - Intervals where a sign change occurs, implying a crossing.
+    Also, a few complex candidates are added if they evaluate correctly.
     
-    for i in range(-rangeOfPowers, rangeOfPowers+1):
-        initials += [base**i, -base**i]
-    initials.extend([1+1j, 1-1j, -1+1j, -1-1j])
+    Parameters:
+      equation: A callable representing the function.
+      num_samples: Number of evenly spaced points in the interval.
+      range_val: Absolute value of the range to scan (-range_val to range_val).
     
-    valids = []
-    for i in initials:
-        inDomain = (evaluate(equation, i) != None)
-        validDerivative = (firstDerivative(equation, i) != None)
-        # if the guess can survive at least one iteration of the Newton's method, 
-        # allow it
-        if inDomain and validDerivative:
-            valids.append(i)
-    
-    # If we couldn't find a valid initial guess, make one
-    if len(valids) == 0:
+    Returns:
+      A list of initial guesses (real and complex) for Newton's method.
+    """
+    guesses = set()  # Use a set to avoid duplicate guesses
+
+    # Generate a list of evenly spaced x values over [-range_val, range_val]
+    xs = [(-range_val) + i * (2 * range_val) / num_samples for i in range(num_samples + 1)]
+    previous_val = None
+    previous_x = None
+
+    for x in xs:
+        fx = evaluate(equation, x)
+        dfx = firstDerivative(equation, x)
+
+        # Only consider x if both the function and its derivative are defined
+        if fx is None or dfx is None:
+            continue
+
+        # If the function value is nearly zero, add x as a candidate
+        if abs(fx) < 1e-3:
+            guesses.add(x)
+
+        # Check for a sign change between consecutive samples; if one is found, use the midpoint as a starting guess.
+        if previous_val is not None and (previous_val * fx).real < 0:
+            mid = (previous_x + x) / 2
+            guesses.add(mid)
+
+        previous_val = fx
+        previous_x = x
+
+    # Fallback: if no guesses were found via grid search, try a powers-of-5 approach.
+    if not guesses:
+        for i in range(-2, 3):
+            for candidate in [5**i, -5**i]:
+                fx = evaluate(equation, candidate)
+                dfx = firstDerivative(equation, candidate)
+                if fx is not None and dfx is not None:
+                    guesses.add(candidate)
+
+    # Last hurrah: if we're really screwed for guesses, slowly bounce outwards from small to large numbers.
+    if not guesses:
         guess = 1e-100
         while (guess <= 1e100):
             if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
-                valids.append(guess)
-                break
+                guesses.add(guess)
+                if len(guesses) > 5: # Give a few guesses just to be thorough
+                    break
             if guess < 0:
                 guess *= -10
             else:
                 guess *= -1
     
-    return valids
+    # Add some standard complex guesses in case the equation supports complex roots
+    for c in [1+1j, 1-1j, -1+1j, -1-1j]:
+        if evaluate(equation, c) is not None and firstDerivative(equation, c) is not None:
+            guesses.add(c)
+
+    out = list(guesses)
+    reals, complexes = [i for i in out if isinstance(i, float) or isinstance(i, int)], [i for i in out if isinstance(i, complex)]
+    reals, complexes = sorted(reals, key=abs), sorted(complexes, key=abs)
+    print(reals+complexes)
+    return reals + complexes
+
 
 def solve(equation, found=None):
     if found == None:
