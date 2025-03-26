@@ -14,7 +14,7 @@ math_names = math_names.union(builtins).union(cmath_names)
 
 epsilon = 2.220446049250313e-16
 sqrtepsilon = 1.4901161193847656e-08 # Square root of Python epsilon
-sqrtepsilon = 1e-10
+#sqrtepsilon = 1e-10
 
 def bracketCheck(expression):
     # Check if brackets are balanced
@@ -142,8 +142,8 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     x=x0
     change = float('inf')
     for iter in range(maxIters):
-        if change == 0: break # 0 change
-        if x != x: # NaN
+        if change == 0: break  # 0 change
+        if x != x:  # NaN
             print("NaN after", iter, "iterations")
             return None
         numerator = evaluate(equation, x)
@@ -241,6 +241,7 @@ def makeInitialGuesses(equation, num_samples=100, range_val=100):
     out = list(guesses)
     reals, complexes = [i for i in out if isinstance(i, float) or isinstance(i, int)], [i for i in out if isinstance(i, complex)]
     reals, complexes = sorted(reals, key=abs), sorted(complexes, key=abs)
+    print(reals+complexes)
     return reals + complexes
 
 
