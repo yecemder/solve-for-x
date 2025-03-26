@@ -204,7 +204,7 @@ def makeInitialGuesses(equation, num_samples=100, range_val=100):
             guesses.add(x)
 
         # Check for a sign change between consecutive samples; if one is found, use the midpoint as a starting guess.
-        if previous_val is not None and (previous_val * fx).real < 0:
+        if previous_val is not None and (previous_val * fx).real <= 0:
             mid = (previous_x + x) / 2
             guesses.add(mid)
 
