@@ -1,20 +1,20 @@
 import regex as re
-from math import *
+# from math import *
 import ast
-import math
+# import math
+from cmath import *
 import cmath as c
 
 pow = __builtins__.pow
 
 # Get all names from math module
-math_names = {name for name in dir(math)}
+# math_names = {name for name in dir(math)}
 cmath_names = {name for name in dir(c)}
-builtins = {"abs", "c"}
-math_names = math_names.union(builtins).union(cmath_names)
+builtins = {"abs", "pow"}
+math_names = cmath_names.union(builtins)
 
-epsilon = 2.220446049250313e-16
+# epsilon = 2.220446049250313e-16
 sqrtepsilon = 1.4901161193847656e-08 # Square root of Python epsilon
-#sqrtepsilon = 1e-10
 
 def bracketCheck(expression):
     # Check if brackets are balanced
@@ -114,6 +114,7 @@ def checkInput(equation):
         for i in names:
             if i in {"log", "log10", "log2"}:
                 print("Note: logs tend to be unstable with Newton's method. Try converting to exponential form if possible.")
+                break
 
     return equation, onlyeval
 
@@ -169,7 +170,7 @@ def newtonsMethod(equation, x0, epsilon1=1e-12, epsilon2=1e-12):
     print("x =", x, "ran out of iterations, evaled to", numerator, "final change was", change)
     return None
 
-def makeInitialGuesses(equation, num_samples=100, range_val=100):
+def guessScan(equation, num_samples=100, range_val=100):
     """
     Generates initial guesses by scanning a real interval and checking for:
       - Points where the function is nearly zero.
@@ -211,54 +212,55 @@ def makeInitialGuesses(equation, num_samples=100, range_val=100):
         previous_val = fx
         previous_x = x
 
-    # Fallback: if no guesses were found via grid search, try a powers-of-5 approach.
-    if not guesses:
-        for i in range(-2, 3):
-            for candidate in [5**i, -5**i]:
-                fx = evaluate(equation, candidate)
-                dfx = firstDerivative(equation, candidate)
-                if fx is not None and dfx is not None:
-                    guesses.add(candidate)
+    return sorted(list(guesses), key=abs)
 
-    # Last hurrah: if we're really screwed for guesses, slowly bounce outwards from small to large numbers.
-    if not guesses:
+def generalGuesses(equation):
+    guesses = []
+    powerRange = 2
+    base = 5
+    for i in range(-powerRange, powerRange+1):
+        for g in [base**i, -base**i]:
+            if evaluate(equation, g) != None and firstDerivative(equation, g) != None:
+                guesses.append(g)
+    if guesses == []:
         guess = 1e-100
         while (guess <= 1e100):
             if evaluate(equation, guess) != None and firstDerivative(equation, guess) != None:
-                guesses.add(guess)
-                if len(guesses) > 5: # Give a few guesses just to be thorough
+                guesses.append(guess)
+                if len(guesses) > 5:
                     break
             if guess < 0:
                 guess *= -10
             else:
                 guess *= -1
     
-    # Add some standard complex guesses in case the equation supports complex roots
+    return guesses
+
+def complexGuesses(equation):
+    guesses = []
     for c in [1+1j, 1-1j, -1+1j, -1-1j]:
-        if evaluate(equation, c) is not None and firstDerivative(equation, c) is not None:
-            guesses.add(c)
+        if evaluate(equation, c) != None and firstDerivative(equation, c) != None:
+            guesses.append(c)
+    return guesses
 
-    out = list(guesses)
-    reals, complexes = [i for i in out if isinstance(i, float) or isinstance(i, int)], [i for i in out if isinstance(i, complex)]
-    reals, complexes = sorted(reals, key=abs), sorted(complexes, key=abs)
-    print(reals+complexes)
-    return reals + complexes
-
+def runNewtons(equation, guesses):
+    print(guesses)
+    for i in guesses:
+        result = newtonsMethod(equation, i)
+        if result is not None:
+            return result
+    return None
 
 def solve(equation, found=None):
     if found == None:
         found = []
-    guesses = makeInitialGuesses(equation)
-    for i in guesses:
-        result = newtonsMethod(equation, i)
-        if result == None:
-            continue
-        found.append(result)
-        divided = applyDivision(equation, result)
-        break
-    
-    # If we came out of the loop without a result, return found values.
-    else: 
+    for guess_method in (guessScan, generalGuesses, complexGuesses):
+        result = runNewtons(equation, guess_method(equation))
+        if result is not None:
+            found.append(result)
+            divided = applyDivision(equation, result)
+            break
+    else:
         return found
 
     # If we've found a lot of roots, don't bother with anymore.
@@ -287,7 +289,7 @@ def printRoots(equation, solutions, evalonly=False):
         else:
             print("imaginary solution code")
             imaginary = round(i.imag,5)
-            complexsolutions.append(f"{i.real}{'+' if imaginary > 0 else '-'}{abs(imaginary) if abs(imaginary) != 1 else ''}i")
+            complexsolutions.append(f"{i.real if i.real != 0 else ''}{'-' if imaginary < 0 else '+' if i.real != 0 else ''}{abs(imaginary) if abs(imaginary) != 1 else ''}i")
     realsolutions = ", ".join(realsolutions)
     complexsolutions = ", ".join(complexsolutions)
     print()
